@@ -2,8 +2,6 @@
 
 Turn an existing HTTP API into an [MCP](https://modelcontextprotocol.io) server — **OpenAPI-first**, framework-agnostic, and **curation-first** (safe by default).
 
-> Status: building in milestones. M0 (OpenAPI → MCP over stdio) works today.
-
 ## Why another one?
 
 The existing Go options split into two camps: framework-specific magic
@@ -17,39 +15,88 @@ model's context.
 It is **layered** so each concern is replaceable:
 
 ```
-L5  Transport      stdio · streamable-HTTP · SSE        (mark3labs/mcp-go)
+L5  Transport      stdio · streamable-HTTP                (mark3labs/mcp-go)
 L4  Curation       include/exclude · read-only · shape
-L3  Engine         IR → MCP tool + HTTP executor        (framework-agnostic core)
-L2  Sources        OpenAPI spec  ·  framework adapters
-L1  Adapters       gin · echo · fiber · chi   (+ swaggo/reflect schema providers)
+L3  Engine         IR → MCP tool + HTTP executor          (framework-agnostic core)
+L2  Sources        OpenAPI · swaggo · framework adapters
+L1  Adapters       gin · echo · fiber · chi   (+ reflect schema provider)
 ```
 
 Everything collapses into one intermediate representation (`ir.Operation`), so
 the core has exactly one code path whether the input is a swagger.json or a
 live Gin router.
 
-## Quick start (M0)
+## Install
+
+```bash
+go get github.com/promptrails/api2mcp
+# or the standalone binary:
+go install github.com/promptrails/api2mcp/cmd/api2mcp@latest
+```
+
+## Quick start
+
+**Library — OpenAPI spec over stdio (Claude Desktop, Cursor, Zed):**
 
 ```go
 src, _ := openapi.FromFile("openapi.yaml")
-srv := api2mcp.New(src, api2mcp.WithBaseURL("https://api.internal"))
+srv := api2mcp.New(src,
+    api2mcp.WithBaseURL("https://api.internal"),
+    api2mcp.ReadOnly(),              // only GET/HEAD become tools
+    api2mcp.IncludeTags("public"),   // whitelist
+)
 srv.ServeStdio(context.Background())
 ```
 
-Run the bundled example against a public API:
+**CLI — no Go code, just a config file:**
 
 ```bash
-go run ./examples/openapi-stdio -spec examples/openapi-stdio/openapi.yaml
+api2mcp serve -config examples/api2mcp.yaml
+# or the quick path:
+api2mcp serve -openapi openapi.yaml -base https://api.internal -read-only -http :8080
 ```
 
-## Milestones
+**Embedded — mount /mcp inside an existing Gin/Echo/Fiber/chi app:**
 
-- [x] **M0** — OpenAPI → MCP tools over stdio (working spike)
-- [x] **M1** — Curation: include/exclude filters, read-only mode
-- [x] **M2** — streamable-HTTP transport, auth forwarding, response shaping
-- [x] **M3** — Framework adapters (gin, echo, fiber, chi) for embedded mode
-- [x] **M4** — Schema providers (swaggo, struct reflection)
-- [ ] **M5** — CLI binary, config file, docs
+```go
+src := ginadapter.New(router)        // routes are the source of tools
+srv := api2mcp.New(src, api2mcp.WithBaseURL("http://localhost:8080"), api2mcp.ReadOnly())
+h, _ := srv.HTTPHandler(context.Background())
+router.Any("/mcp", gin.WrapH(h))
+```
+
+## Sources
+
+| Source | Use it when |
+|---|---|
+| `source/openapi` | You have an OpenAPI 3 spec (file or URL). **Primary path.** |
+| `source/swaggo` | Your app is annotated with [swaggo](https://github.com/swaggo/swag) (OpenAPI 2.0). |
+| `adapter/{gin,echo,fiber,chi}` | Embedded mode: the live router is the source. |
+| `schema/reflectschema` | Embedded mode + you want request-body schemas from Go structs. |
+
+## Curation (the point)
+
+Safe by default. Compose any of:
+
+- `ReadOnly()` — drop every mutating operation (POST/PUT/PATCH/DELETE).
+- `IncludeTags(...)` / `ExcludeTags(...)`
+- `IncludePaths("/public/*")` / `ExcludePaths("/admin/*")`
+- `IncludeOperations(id...)` / `ExcludeOperations(id...)`
+- `WithFilter(func(ir.Operation) bool)` — arbitrary predicate.
+
+## Transport & auth
+
+- `ServeStdio(ctx)` for desktop clients; `ServeHTTP(ctx, ":8080")` for hosted/streamable-HTTP.
+- `WithForwardHeaders("Authorization")` passes the caller's Bearer/JWT through to the upstream API.
+- `WithStaticHeader(k, v)` injects a fixed header (e.g. a server-side API key).
+- `WithMaxResponseBytes(n)` caps each response so large payloads don't flood the model's context.
+
+## Examples
+
+- `examples/openapi-stdio` — OpenAPI → stdio
+- `examples/openapi-http` — OpenAPI → streamable-HTTP with auth forwarding
+- `examples/embedded-gin` — MCP mounted inside a Gin app
+- `examples/api2mcp.yaml` — full CLI config
 
 ## License
 

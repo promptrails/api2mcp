@@ -1,0 +1,22 @@
+# Declarative api2mcp server. Run with:
+#   api2mcp serve -config examples/api2mcp.yaml
+name: demo-users
+version: 1.0.0
+baseURL: https://jsonplaceholder.typicode.com
+
+source:
+  type: openapi               # openapi | swaggo
+  path: examples/openapi-stdio/openapi.yaml
+
+transport:
+  type: http                  # stdio | http
+  addr: ":8080"
+  path: /mcp
+
+curation:
+  readOnly: true              # safe by default: only GET/HEAD become tools
+  includeTags: [public]       # whitelist
+  excludePaths: ["/admin/*"]  # belt and suspenders
+
+forwardHeaders: [Authorization]   # pass the caller's JWT upstream
+maxResponseBytes: 16384           # 16 KiB cap so big payloads don't flood context

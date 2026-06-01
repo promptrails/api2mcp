@@ -10,6 +10,7 @@ require (
 	github.com/invopop/jsonschema v0.14.0
 	github.com/labstack/echo/v4 v4.15.2
 	github.com/mark3labs/mcp-go v0.54.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -70,5 +71,4 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
