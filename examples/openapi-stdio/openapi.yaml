@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: Demo Users API
+  version: 1.0.0
+servers:
+  - url: https://jsonplaceholder.typicode.com
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      description: Returns all users.
+      tags: [users, public]
+      responses:
+        "200":
+          description: OK
+  /users/{id}:
+    get:
+      operationId: getUser
+      summary: Get a user by id
+      tags: [users, public]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The user id
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+  /posts:
+    post:
+      operationId: createPost
+      summary: Create a post
+      tags: [posts, write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body, userId]
+              properties:
+                title:
+                  type: string
+                  description: Post title
+                body:
+                  type: string
+                userId:
+                  type: integer
+      responses:
+        "201":
+          description: Created
