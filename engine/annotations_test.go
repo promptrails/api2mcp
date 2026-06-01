@@ -45,7 +45,10 @@ func TestBuildSetsAnnotationsAndAudits(t *testing.T) {
 
 	var events []AuditEvent
 	ops := []ir.Operation{{ID: "createUser", Method: "POST", Path: "/users", RequestBody: &ir.Body{}}}
-	tools := Build(ops, &Executor{BaseURL: srv.URL}, nil, func(e AuditEvent) { events = append(events, e) })
+	tools := Build(ops, BuildConfig{
+		Executor: &Executor{BaseURL: srv.URL},
+		Audit:    func(e AuditEvent) { events = append(events, e) },
+	})
 
 	if len(tools) != 1 {
 		t.Fatalf("got %d tools", len(tools))

@@ -44,6 +44,13 @@ type Config struct {
 	StaticHeaders    map[string]string `yaml:"staticHeaders"`
 	MaxResponseBytes int               `yaml:"maxResponseBytes"`
 	Audit            bool              `yaml:"audit"`
+
+	RateLimit struct {
+		PerSecond float64 `yaml:"perSecond"`
+		Burst     int     `yaml:"burst"`
+	} `yaml:"rateLimit"`
+
+	MarkDestructive []string `yaml:"markDestructive"`
 }
 
 // LoadConfig reads and parses a YAML config file.
@@ -115,6 +122,12 @@ func (c *Config) options() []api2mcp.Option {
 	}
 	if c.Audit {
 		opts = append(opts, api2mcp.WithAuditLogger(api2mcp.StdAuditLogger))
+	}
+	if c.RateLimit.PerSecond > 0 && c.RateLimit.Burst > 0 {
+		opts = append(opts, api2mcp.WithRateLimit(c.RateLimit.PerSecond, c.RateLimit.Burst))
+	}
+	if len(c.MarkDestructive) > 0 {
+		opts = append(opts, api2mcp.WithMarkDestructive(c.MarkDestructive...))
 	}
 	if c.Transport.Path != "" {
 		opts = append(opts, api2mcp.WithEndpointPath(c.Transport.Path))

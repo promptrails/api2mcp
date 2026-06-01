@@ -41,9 +41,24 @@ type Tool struct {
 // payloads. When nil, DefaultShape is used.
 type ShapeFunc func(*Response) string
 
-// Build constructs one Tool per operation. shape may be nil (DefaultShape is
-// used); audit may be nil (no audit logging).
-func Build(ops []ir.Operation, exec *Executor, shape ShapeFunc, audit AuditFunc) []Tool {
+// AnnotateFunc lets callers adjust a tool's safety annotations after they are
+// derived from the HTTP method — e.g. to force destructiveHint on a POST that
+// charges a card. base is the method-derived annotation.
+type AnnotateFunc func(op ir.Operation, base mcp.ToolAnnotation) mcp.ToolAnnotation
+
+// BuildConfig holds everything Build needs beyond the operations themselves.
+// All fields are optional except Executor.
+type BuildConfig struct {
+	Executor  *Executor
+	Shape     ShapeFunc    // nil → DefaultShape
+	Audit     AuditFunc    // nil → no audit logging
+	Limit     RateLimit    // zero → unlimited
+	Annotator AnnotateFunc // nil → method-derived annotations only
+}
+
+// Build constructs one Tool per operation.
+func Build(ops []ir.Operation, cfg BuildConfig) []Tool {
+	shape := cfg.Shape
 	if shape == nil {
 		shape = DefaultShape
 	}
@@ -51,16 +66,29 @@ func Build(ops []ir.Operation, exec *Executor, shape ShapeFunc, audit AuditFunc)
 	for _, op := range ops {
 		op := op
 		t := mcp.NewToolWithRawSchema(op.ID, describe(op), InputSchema(op))
-		t.Annotations = annotate(op) // safety hints derived from the HTTP method
+		ann := annotate(op) // safety hints derived from the HTTP method
+		if cfg.Annotator != nil {
+			ann = cfg.Annotator(op, ann)
+		}
+		t.Annotations = ann
+
+		var bucket *tokenBucket
+		if cfg.Limit.enabled() {
+			bucket = newBucket(cfg.Limit)
+		}
+
 		handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			if bucket != nil && !bucket.allow() {
+				return mcp.NewToolResultError("rate limit exceeded for this tool; try again shortly"), nil
+			}
 			start := time.Now()
-			resp, err := exec.Call(ctx, op, req.GetArguments())
-			if audit != nil {
+			resp, err := cfg.Executor.Call(ctx, op, req.GetArguments())
+			if cfg.Audit != nil {
 				ev := AuditEvent{OperationID: op.ID, Method: op.Method, Path: op.Path, Duration: time.Since(start), Err: err}
 				if resp != nil {
 					ev.Status = resp.Status
 				}
-				audit(ev)
+				cfg.Audit(ev)
 			}
 			if err != nil {
 				return mcp.NewToolResultErrorFromErr("upstream call failed", err), nil

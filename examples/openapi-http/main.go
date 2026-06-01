@@ -31,7 +31,7 @@ func main() {
 		api2mcp.ReadOnly(),
 		api2mcp.IncludeTags("public"),
 		api2mcp.WithForwardHeaders("Authorization"), // pass client JWT upstream
-		api2mcp.WithMaxResponseBytes(8<<10),          // 8 KiB cap
+		api2mcp.WithMaxResponseBytes(8<<10),         // 8 KiB cap
 		api2mcp.WithEndpointPath("/mcp"),
 	)
 

@@ -20,3 +20,10 @@ curation:
 
 forwardHeaders: [Authorization]   # pass the caller's JWT upstream
 maxResponseBytes: 16384           # 16 KiB cap so big payloads don't flood context
+audit: true                       # log every tool call
+
+rateLimit:                        # per-tool token bucket
+  perSecond: 5
+  burst: 10
+
+# markDestructive: [closeAccount] # force destructiveHint on risky endpoints

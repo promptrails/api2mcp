@@ -84,6 +84,30 @@ are a real safety signal, set for you automatically:
 `openWorldHint` is always true (a tool call reaches an external API). No
 configuration is required — this is on by default.
 
+### Overriding destructiveness
+
+Some endpoints understate their risk: a `POST /charge` is additive by HTTP
+semantics but very much destructive in practice. Force the hint:
+
+```go
+api2mcp.WithMarkDestructive("charge", "closeAccount")
+```
+
+For full control, `WithAnnotator(func(op ir.Operation, base mcp.ToolAnnotation) mcp.ToolAnnotation)`
+lets you rewrite any hint per operation.
+
+## Rate limiting
+
+Protect the upstream API from a runaway LLM. `WithRateLimit` applies a per-tool
+token bucket; a denied call fails fast with a clear message rather than blocking:
+
+```go
+api2mcp.WithRateLimit(5, 10) // 5 calls/sec sustained, burst of 10, per tool
+```
+
+Each tool gets its own bucket, so one chatty tool can't starve the others. In
+the CLI, set `rateLimit: { perSecond: 5, burst: 10 }`.
+
 ## Audit logging
 
 Make LLM-driven traffic observable: register a callback invoked after every tool

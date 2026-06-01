@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/promptrails/api2mcp/engine"
 	"github.com/promptrails/api2mcp/ir"
@@ -32,14 +33,16 @@ type Server struct {
 }
 
 type options struct {
-	name          string
-	version       string
-	baseURL       string
-	httpClient    *http.Client
+	name           string
+	version        string
+	baseURL        string
+	httpClient     *http.Client
 	staticHeaders  map[string]string
 	shape          engine.ShapeFunc
 	maxRespBytes   int
 	audit          engine.AuditFunc
+	limit          engine.RateLimit
+	annotator      engine.AnnotateFunc
 	policy         policy.Policy
 	endpointPath   string
 	forwardHeaders []string
@@ -82,6 +85,38 @@ func WithMaxResponseBytes(n int) Option { return func(o *options) { o.maxRespByt
 // operation, upstream status, duration and any error — so LLM-driven traffic
 // against your API is observable. Pass api2mcp.StdAuditLogger for a sane default.
 func WithAuditLogger(fn engine.AuditFunc) Option { return func(o *options) { o.audit = fn } }
+
+// WithRateLimit caps how often each tool may be invoked, using a per-tool token
+// bucket. perSecond is the sustained rate; burst is the most back-to-back calls
+// allowed. A denied call fails fast with a clear message rather than blocking.
+// This protects the upstream API from a runaway LLM.
+func WithRateLimit(perSecond float64, burst int) Option {
+	return func(o *options) { o.limit = engine.RateLimit{PerSecond: perSecond, Burst: burst} }
+}
+
+// WithAnnotator adjusts each tool's safety annotations after they are derived
+// from the HTTP method. For the common case, prefer WithMarkDestructive.
+func WithAnnotator(fn engine.AnnotateFunc) Option { return func(o *options) { o.annotator = fn } }
+
+// WithMarkDestructive forces the destructiveHint (and clears readOnlyHint) on
+// the named operations — for endpoints whose method understates their risk,
+// e.g. a POST /charge or POST /accounts/{id}/close. MCP clients use this to warn
+// or require confirmation before the LLM invokes them.
+func WithMarkDestructive(operationIDs ...string) Option {
+	mark := make(map[string]struct{}, len(operationIDs))
+	for _, id := range operationIDs {
+		mark[id] = struct{}{}
+	}
+	return WithAnnotator(func(op ir.Operation, base mcp.ToolAnnotation) mcp.ToolAnnotation {
+		if _, ok := mark[op.ID]; ok {
+			t := true
+			f := false
+			base.DestructiveHint = &t
+			base.ReadOnlyHint = &f
+		}
+		return base
+	})
+}
 
 // --- Transport (L5) -------------------------------------------------------
 
@@ -210,7 +245,13 @@ func (s *Server) Tools(ctx context.Context) ([]engine.Tool, error) {
 		return nil, fmt.Errorf("resolve operations: %w", err)
 	}
 	ops = s.opts.curate(ops)
-	return engine.Build(ops, s.executor(), s.opts.shaper(), s.opts.audit), nil
+	return engine.Build(ops, engine.BuildConfig{
+		Executor:  s.executor(),
+		Shape:     s.opts.shaper(),
+		Audit:     s.opts.audit,
+		Limit:     s.opts.limit,
+		Annotator: s.opts.annotator,
+	}), nil
 }
 
 // MCPServer builds a ready-to-serve mcp-go server with all tools registered.
