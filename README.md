@@ -96,7 +96,13 @@ Safe by default. Compose any of:
 - `examples/openapi-stdio` — OpenAPI → stdio
 - `examples/openapi-http` — OpenAPI → streamable-HTTP with auth forwarding
 - `examples/embedded-gin` — MCP mounted inside a Gin app
+- `examples/embedded-echo` — MCP mounted inside an Echo app
+- `examples/embedded-fiber` — MCP mounted inside a Fiber app
+- `examples/embedded-chi` — MCP mounted inside a chi app
 - `examples/api2mcp.yaml` — full CLI config
+
+All four embedded examples mount `/mcp` in the same process as the API and are
+verified end-to-end (an MCP `tools/call` reaches the app's own handler).
 
 ## License
 
