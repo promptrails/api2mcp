@@ -43,6 +43,7 @@ type Config struct {
 	ForwardHeaders   []string          `yaml:"forwardHeaders"`
 	StaticHeaders    map[string]string `yaml:"staticHeaders"`
 	MaxResponseBytes int               `yaml:"maxResponseBytes"`
+	Audit            bool              `yaml:"audit"`
 }
 
 // LoadConfig reads and parses a YAML config file.
@@ -111,6 +112,9 @@ func (c *Config) options() []api2mcp.Option {
 	}
 	if c.MaxResponseBytes > 0 {
 		opts = append(opts, api2mcp.WithMaxResponseBytes(c.MaxResponseBytes))
+	}
+	if c.Audit {
+		opts = append(opts, api2mcp.WithAuditLogger(api2mcp.StdAuditLogger))
 	}
 	if c.Transport.Path != "" {
 		opts = append(opts, api2mcp.WithEndpointPath(c.Transport.Path))

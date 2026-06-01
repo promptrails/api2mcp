@@ -39,6 +39,7 @@ type options struct {
 	staticHeaders  map[string]string
 	shape          engine.ShapeFunc
 	maxRespBytes   int
+	audit          engine.AuditFunc
 	policy         policy.Policy
 	endpointPath   string
 	forwardHeaders []string
@@ -76,6 +77,11 @@ func WithResponseShaper(s engine.ShapeFunc) Option { return func(o *options) { o
 // WithMaxResponseBytes caps the size of each tool's rendered response so a large
 // upstream payload cannot blow up the model's context. 0 means no limit.
 func WithMaxResponseBytes(n int) Option { return func(o *options) { o.maxRespBytes = n } }
+
+// WithAuditLogger registers a callback invoked after every tool call with the
+// operation, upstream status, duration and any error — so LLM-driven traffic
+// against your API is observable. Pass api2mcp.StdAuditLogger for a sane default.
+func WithAuditLogger(fn engine.AuditFunc) Option { return func(o *options) { o.audit = fn } }
 
 // --- Transport (L5) -------------------------------------------------------
 
@@ -204,7 +210,7 @@ func (s *Server) Tools(ctx context.Context) ([]engine.Tool, error) {
 		return nil, fmt.Errorf("resolve operations: %w", err)
 	}
 	ops = s.opts.curate(ops)
-	return engine.Build(ops, s.executor(), s.opts.shaper()), nil
+	return engine.Build(ops, s.executor(), s.opts.shaper(), s.opts.audit), nil
 }
 
 // MCPServer builds a ready-to-serve mcp-go server with all tools registered.

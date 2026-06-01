@@ -84,6 +84,11 @@ Safe by default. Compose any of:
 - `IncludeOperations(id...)` / `ExcludeOperations(id...)`
 - `WithFilter(func(ir.Operation) bool)` — arbitrary predicate.
 
+Plus, automatically: every tool gets **MCP safety annotations**
+(`readOnlyHint`/`destructiveHint`/`idempotentHint`) derived from its HTTP
+method, so clients can warn before destructive calls. Add
+`WithAuditLogger(api2mcp.StdAuditLogger)` to log every tool call.
+
 ## Transport & auth
 
 - `ServeStdio(ctx)` for desktop clients; `ServeHTTP(ctx, ":8080")` for hosted/streamable-HTTP.

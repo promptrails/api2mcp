@@ -66,6 +66,53 @@ For each operation, the policy applies in this order:
 3. if any exclude matches → **drop**;
 4. otherwise → **keep**.
 
+## Safety hints (automatic)
+
+Every generated tool carries [MCP tool annotations](https://modelcontextprotocol.io/docs/concepts/tools)
+derived from its HTTP method. MCP clients surface these to the user — e.g.
+warning or asking for confirmation before invoking a destructive tool — so they
+are a real safety signal, set for you automatically:
+
+| Method | `readOnlyHint` | `destructiveHint` | `idempotentHint` |
+|--------|:---:|:---:|:---:|
+| GET / HEAD | ✓ | ✗ | ✓ |
+| POST | ✗ | ✗ | ✗ |
+| PUT | ✗ | ✓ | ✓ |
+| PATCH | ✗ | ✓ | ✗ |
+| DELETE | ✗ | ✓ | ✓ |
+
+`openWorldHint` is always true (a tool call reaches an external API). No
+configuration is required — this is on by default.
+
+## Audit logging
+
+Make LLM-driven traffic observable: register a callback invoked after every tool
+call with the operation, upstream status, duration and any error.
+
+```go
+srv := api2mcp.New(src,
+    api2mcp.WithBaseURL("https://api.internal"),
+    api2mcp.WithAuditLogger(api2mcp.StdAuditLogger), // one log line per call
+)
+```
+
+`StdAuditLogger` emits:
+
+```
+api2mcp: getUser GET /users/{id} -> 200 (12ms)
+```
+
+For custom sinks (structured logs, metrics, tracing) pass your own
+`func(engine.AuditEvent)`:
+
+```go
+api2mcp.WithAuditLogger(func(e engine.AuditEvent) {
+    metrics.Observe(e.OperationID, e.Status, e.Duration)
+})
+```
+
+In the CLI, set `audit: true` in the config.
+
 ## Recommended starting posture
 
 ```go
@@ -75,6 +122,7 @@ api2mcp.New(src,
     api2mcp.IncludeTags("ai-safe"),   // explicit opt-in per endpoint
     api2mcp.ExcludePaths("/internal/*"),
     api2mcp.WithMaxResponseBytes(16 << 10), // don't flood context
+    api2mcp.WithAuditLogger(api2mcp.StdAuditLogger), // observe every call
 )
 ```
 

@@ -7,11 +7,27 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/promptrails/api2mcp/ir"
 )
+
+// AuditEvent records one tool invocation for observability. Logging every call
+// — what was invoked, against which upstream path, with what result — is part
+// of running an LLM-facing API safely.
+type AuditEvent struct {
+	OperationID string
+	Method      string
+	Path        string
+	Status      int
+	Duration    time.Duration
+	Err         error
+}
+
+// AuditFunc receives an AuditEvent after each tool call completes.
+type AuditFunc func(AuditEvent)
 
 // Tool is a built MCP tool paired with its handler, ready to register.
 type Tool struct {
@@ -25,8 +41,9 @@ type Tool struct {
 // payloads. When nil, DefaultShape is used.
 type ShapeFunc func(*Response) string
 
-// Build constructs one Tool per operation.
-func Build(ops []ir.Operation, exec *Executor, shape ShapeFunc) []Tool {
+// Build constructs one Tool per operation. shape may be nil (DefaultShape is
+// used); audit may be nil (no audit logging).
+func Build(ops []ir.Operation, exec *Executor, shape ShapeFunc, audit AuditFunc) []Tool {
 	if shape == nil {
 		shape = DefaultShape
 	}
@@ -34,8 +51,17 @@ func Build(ops []ir.Operation, exec *Executor, shape ShapeFunc) []Tool {
 	for _, op := range ops {
 		op := op
 		t := mcp.NewToolWithRawSchema(op.ID, describe(op), InputSchema(op))
+		t.Annotations = annotate(op) // safety hints derived from the HTTP method
 		handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			start := time.Now()
 			resp, err := exec.Call(ctx, op, req.GetArguments())
+			if audit != nil {
+				ev := AuditEvent{OperationID: op.ID, Method: op.Method, Path: op.Path, Duration: time.Since(start), Err: err}
+				if resp != nil {
+					ev.Status = resp.Status
+				}
+				audit(ev)
+			}
 			if err != nil {
 				return mcp.NewToolResultErrorFromErr("upstream call failed", err), nil
 			}
