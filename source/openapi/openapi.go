@@ -47,6 +47,11 @@ func FromURL(raw string) (*Source, error) {
 	return &Source{doc: doc}, nil
 }
 
+// FromV3Doc wraps an already-parsed OpenAPI 3 document. It lets other sources
+// (e.g. swaggo, which emits OpenAPI 2.0) reuse the same operation conversion
+// after converting their spec to v3.
+func FromV3Doc(doc *openapi3.T) *Source { return &Source{doc: doc} }
+
 // FromData parses an OpenAPI 3 spec from raw bytes (JSON or YAML).
 func FromData(data []byte) (*Source, error) {
 	loader := openapi3.NewLoader()
