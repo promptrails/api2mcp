@@ -46,7 +46,7 @@ go run ./examples/openapi-stdio -spec examples/openapi-stdio/openapi.yaml
 
 - [x] **M0** — OpenAPI → MCP tools over stdio (working spike)
 - [x] **M1** — Curation: include/exclude filters, read-only mode
-- [ ] **M2** — streamable-HTTP transport, auth forwarding, response shaping
+- [x] **M2** — streamable-HTTP transport, auth forwarding, response shaping
 - [ ] **M3** — Framework adapters (gin, echo, fiber, chi) for embedded mode
 - [ ] **M4** — Schema providers (swaggo, struct reflection)
 - [ ] **M5** — CLI binary, config file, docs

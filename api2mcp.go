@@ -36,9 +36,12 @@ type options struct {
 	version       string
 	baseURL       string
 	httpClient    *http.Client
-	staticHeaders map[string]string
-	shape         engine.ShapeFunc
-	policy        policy.Policy
+	staticHeaders  map[string]string
+	shape          engine.ShapeFunc
+	maxRespBytes   int
+	policy         policy.Policy
+	endpointPath   string
+	forwardHeaders []string
 }
 
 // Option configures a Server.
@@ -69,6 +72,23 @@ func WithStaticHeader(key, value string) Option {
 
 // WithResponseShaper overrides how upstream responses are rendered for the LLM.
 func WithResponseShaper(s engine.ShapeFunc) Option { return func(o *options) { o.shape = s } }
+
+// WithMaxResponseBytes caps the size of each tool's rendered response so a large
+// upstream payload cannot blow up the model's context. 0 means no limit.
+func WithMaxResponseBytes(n int) Option { return func(o *options) { o.maxRespBytes = n } }
+
+// --- Transport (L5) -------------------------------------------------------
+
+// WithEndpointPath sets the HTTP path the streamable-HTTP transport listens on
+// (default "/mcp").
+func WithEndpointPath(p string) Option { return func(o *options) { o.endpointPath = p } }
+
+// WithForwardHeaders forwards the named headers from the incoming MCP HTTP
+// request to every upstream call — typically "Authorization" so a client's
+// Bearer/JWT reaches your protected API. Only meaningful with ServeHTTP.
+func WithForwardHeaders(names ...string) Option {
+	return func(o *options) { o.forwardHeaders = append(o.forwardHeaders, names...) }
+}
 
 // --- Curation (L4) --------------------------------------------------------
 
@@ -146,6 +166,19 @@ func WithFilter(keep func(ir.Operation) bool) Option {
 // curate applies the curation policy before tool building.
 func (o options) curate(ops []ir.Operation) []ir.Operation { return o.policy.Apply(ops) }
 
+// shaper resolves the effective response shaper: the custom shaper if set
+// (else the default), wrapped with a byte cap when WithMaxResponseBytes is set.
+func (o options) shaper() engine.ShapeFunc {
+	base := o.shape
+	if base == nil {
+		base = engine.DefaultShape
+	}
+	if o.maxRespBytes > 0 {
+		return engine.Truncate(o.maxRespBytes, base)
+	}
+	return base
+}
+
 // New creates a Server from a Source and options.
 func New(src source.Source, opts ...Option) *Server {
 	o := options{name: "api2mcp", version: "0.1.0"}
@@ -171,7 +204,7 @@ func (s *Server) Tools(ctx context.Context) ([]engine.Tool, error) {
 		return nil, fmt.Errorf("resolve operations: %w", err)
 	}
 	ops = s.opts.curate(ops)
-	return engine.Build(ops, s.executor(), s.opts.shape), nil
+	return engine.Build(ops, s.executor(), s.opts.shaper()), nil
 }
 
 // MCPServer builds a ready-to-serve mcp-go server with all tools registered.
