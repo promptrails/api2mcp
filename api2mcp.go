@@ -21,6 +21,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/promptrails/api2mcp/engine"
 	"github.com/promptrails/api2mcp/ir"
+	"github.com/promptrails/api2mcp/policy"
 	"github.com/promptrails/api2mcp/source"
 )
 
@@ -37,6 +38,7 @@ type options struct {
 	httpClient    *http.Client
 	staticHeaders map[string]string
 	shape         engine.ShapeFunc
+	policy        policy.Policy
 }
 
 // Option configures a Server.
@@ -68,10 +70,81 @@ func WithStaticHeader(key, value string) Option {
 // WithResponseShaper overrides how upstream responses are rendered for the LLM.
 func WithResponseShaper(s engine.ShapeFunc) Option { return func(o *options) { o.shape = s } }
 
-// curate filters/transforms operations before tool building. In M0 it is a
-// no-op; the M1 curation layer replaces this with real include/exclude and
-// read-only policy.
-func (o options) curate(ops []ir.Operation) []ir.Operation { return ops }
+// --- Curation (L4) --------------------------------------------------------
+
+// ReadOnly exposes only side-effect free operations (GET/HEAD). This is the
+// recommended default when pointing an LLM at a real API.
+func ReadOnly() Option { return func(o *options) { o.policy.ReadOnly = true } }
+
+// IncludeTags keeps only operations carrying at least one of the given tags
+// (a whitelist). Combine with other Include* options — they are OR-ed.
+func IncludeTags(tags ...string) Option {
+	return func(o *options) {
+		for _, t := range tags {
+			o.policy.Includes = append(o.policy.Includes, policy.Tag(t))
+		}
+	}
+}
+
+// ExcludeTags drops operations carrying any of the given tags.
+func ExcludeTags(tags ...string) Option {
+	return func(o *options) {
+		for _, t := range tags {
+			o.policy.Excludes = append(o.policy.Excludes, policy.Tag(t))
+		}
+	}
+}
+
+// IncludePaths keeps only operations whose path matches one of the globs
+// (e.g. "/public/*").
+func IncludePaths(globs ...string) Option {
+	return func(o *options) {
+		for _, g := range globs {
+			o.policy.Includes = append(o.policy.Includes, policy.PathGlob(g))
+		}
+	}
+}
+
+// ExcludePaths drops operations whose path matches one of the globs
+// (e.g. "/admin/*", "/internal/*").
+func ExcludePaths(globs ...string) Option {
+	return func(o *options) {
+		for _, g := range globs {
+			o.policy.Excludes = append(o.policy.Excludes, policy.PathGlob(g))
+		}
+	}
+}
+
+// IncludeOperations keeps only the operations with the given ids.
+func IncludeOperations(ids ...string) Option {
+	return func(o *options) {
+		for _, id := range ids {
+			o.policy.Includes = append(o.policy.Includes, policy.OperationID(id))
+		}
+	}
+}
+
+// ExcludeOperations drops the operations with the given ids.
+func ExcludeOperations(ids ...string) Option {
+	return func(o *options) {
+		for _, id := range ids {
+			o.policy.Excludes = append(o.policy.Excludes, policy.OperationID(id))
+		}
+	}
+}
+
+// WithFilter adds a custom predicate; operations for which it returns false are
+// dropped. (Implemented as an exclude of the negation.)
+func WithFilter(keep func(ir.Operation) bool) Option {
+	return func(o *options) {
+		o.policy.Excludes = append(o.policy.Excludes, policy.Custom(func(op ir.Operation) bool {
+			return !keep(op)
+		}))
+	}
+}
+
+// curate applies the curation policy before tool building.
+func (o options) curate(ops []ir.Operation) []ir.Operation { return o.policy.Apply(ops) }
 
 // New creates a Server from a Source and options.
 func New(src source.Source, opts ...Option) *Server {

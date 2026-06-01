@@ -26,6 +26,9 @@ func main() {
 	srv := api2mcp.New(src,
 		api2mcp.WithName("demo-users"),
 		api2mcp.WithBaseURL(*base),
+		// Curation (M1): safe by default — only expose read-only, public tools.
+		api2mcp.ReadOnly(),
+		api2mcp.IncludeTags("public"),
 	)
 
 	if err := srv.ServeStdio(context.Background()); err != nil {
