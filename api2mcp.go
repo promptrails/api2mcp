@@ -1,16 +1,3 @@
-// Package api2mcp turns an existing HTTP API into an MCP server.
-//
-// It is OpenAPI-first and layered: a Source (an OpenAPI spec, a live router, a
-// manual list) is normalized into a framework-agnostic intermediate
-// representation, the engine maps that to MCP tools backed by real HTTP calls,
-// and a curation layer decides which tools are safe to expose and how their
-// responses are shaped. The MCP protocol itself is handled by mark3labs/mcp-go.
-//
-// Minimal use:
-//
-//	src, _ := openapi.FromFile("openapi.yaml")
-//	srv := api2mcp.New(src, api2mcp.WithBaseURL("https://api.internal"))
-//	srv.ServeStdio(context.Background())
 package api2mcp
 
 import (

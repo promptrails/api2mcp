@@ -1,6 +1,14 @@
 # api2mcp
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/promptrails/api2mcp.svg)](https://pkg.go.dev/github.com/promptrails/api2mcp)
+[![CI](https://github.com/promptrails/api2mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/promptrails/api2mcp/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/promptrails/api2mcp)](https://goreportcard.com/report/github.com/promptrails/api2mcp)
+[![Release](https://img.shields.io/github/v/release/promptrails/api2mcp)](https://github.com/promptrails/api2mcp/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Turn an existing HTTP API into an [MCP](https://modelcontextprotocol.io) server — **OpenAPI-first**, framework-agnostic, and **curation-first** (safe by default).
+
+📖 **[Documentation](https://promptrails.github.io/api2mcp/)** · [Go Reference](https://pkg.go.dev/github.com/promptrails/api2mcp)
 
 ## Why another one?
 
