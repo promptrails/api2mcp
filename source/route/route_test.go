@@ -56,9 +56,9 @@ func TestColonToBrace(t *testing.T) {
 		{"/users/:id", "/users/{id}"},
 		{"/users/:id/posts/:postID", "/users/{id}/posts/{postID}"},
 		{"/files/*filepath", "/files/{filepath}"},
-		{"/x/*", "/x/{wildcard}"},     // anonymous wildcard gets a name
-		{"/a/{b}", "/a/{b}"},          // chi-style braces left untouched
-		{"/static", "/static"},        // no params
+		{"/x/*", "/x/{wildcard}"}, // anonymous wildcard gets a name
+		{"/a/{b}", "/a/{b}"},      // chi-style braces left untouched
+		{"/static", "/static"},    // no params
 	}
 	for _, tc := range tests {
 		t.Run(tc.in, func(t *testing.T) {
