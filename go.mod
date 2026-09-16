@@ -9,7 +9,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.15
 	github.com/invopop/jsonschema v0.14.0
 	github.com/labstack/echo/v4 v4.15.4
-	github.com/mark3labs/mcp-go v0.54.1
+	github.com/mark3labs/mcp-go v0.58.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
