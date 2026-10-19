@@ -3,9 +3,9 @@ module github.com/promptrails/api2mcp
 go 1.27.2
 
 require (
-	github.com/getkin/kin-openapi v0.149.0
+	github.com/getkin/kin-openapi v0.151.0
 	github.com/gin-gonic/gin v1.12.0
-	github.com/go-chi/chi/v5 v5.3.2
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/gofiber/fiber/v2 v2.52.15
 	github.com/invopop/jsonschema v0.14.0
 	github.com/labstack/echo/v4 v4.16.0
