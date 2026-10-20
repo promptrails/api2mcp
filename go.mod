@@ -1,6 +1,6 @@
 module github.com/promptrails/api2mcp
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/getkin/kin-openapi v0.151.0
