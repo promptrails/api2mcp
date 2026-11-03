@@ -4,7 +4,7 @@ package echoadapter
 import (
 	"context"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/promptrails/api2mcp/ir"
 	"github.com/promptrails/api2mcp/source/route"
 )
@@ -18,7 +18,7 @@ func New(e *echo.Echo) *Source { return &Source{e: e} }
 // Operations implements source.Source by walking Echo's registered routes.
 func (s *Source) Operations(_ context.Context) ([]ir.Operation, error) {
 	var ops []ir.Operation
-	for _, r := range s.e.Routes() {
+	for _, r := range s.e.Router().Routes() {
 		if !route.StandardMethod(r.Method) {
 			continue
 		}

@@ -9,22 +9,21 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/promptrails/api2mcp"
 	"github.com/promptrails/api2mcp/adapter/echoadapter"
 )
 
 func main() {
 	e := echo.New()
-	e.HideBanner = true
 
-	e.GET("/users", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, []echo.Map{{"id": 1, "name": "Ada"}})
+	e.GET("/users", func(c *echo.Context) error {
+		return c.JSON(http.StatusOK, []map[string]any{{"id": 1, "name": "Ada"}})
 	})
-	e.GET("/users/:id", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, echo.Map{"id": c.Param("id"), "name": "Ada"})
+	e.GET("/users/:id", func(c *echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]any{"id": c.Param("id"), "name": "Ada"})
 	})
-	e.POST("/users", func(c echo.Context) error { return c.JSON(http.StatusCreated, echo.Map{"ok": true}) })
+	e.POST("/users", func(c *echo.Context) error { return c.JSON(http.StatusCreated, map[string]any{"ok": true}) })
 
 	srv := api2mcp.New(echoadapter.New(e),
 		api2mcp.WithName("embedded-echo"),

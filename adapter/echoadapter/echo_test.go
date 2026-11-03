@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func TestEchoRoutesToOperations(t *testing.T) {
 	e := echo.New()
-	e.GET("/users", func(echo.Context) error { return nil })
-	e.GET("/users/:id", func(echo.Context) error { return nil })
-	e.POST("/posts", func(echo.Context) error { return nil })
+	e.GET("/users", func(*echo.Context) error { return nil })
+	e.GET("/users/:id", func(*echo.Context) error { return nil })
+	e.POST("/posts", func(*echo.Context) error { return nil })
 
 	ops, err := New(e).Operations(context.Background())
 	if err != nil {
