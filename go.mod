@@ -8,7 +8,7 @@ require (
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/gofiber/fiber/v2 v2.52.16
 	github.com/invopop/jsonschema v0.14.0
-	github.com/labstack/echo/v5 v5.4.5
+	github.com/labstack/echo/v5 v5.4.6
 	github.com/mark3labs/mcp-go v0.58.0
 	gopkg.in/yaml.v3 v3.0.1
 )
